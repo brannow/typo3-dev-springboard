@@ -81,8 +81,8 @@ class FileSystem implements Typo3FeatureInterface
 
     public function execute(Typo3Version $version, array $features): self
     {
-        /** @var Request $request */
-        $request = $features[Site::class];
+        /** @var Site $site */
+        $site = $features[Site::class] ?? throw new Exception('Site Feature not provided');
 
         if (!file_exists($this->baseDir)) {
             throw new Exception('Base Typo3 Directory not found: ' . $this->baseDir);
@@ -93,33 +93,13 @@ class FileSystem implements Typo3FeatureInterface
         $this->createDirIfNotExists($this->publicDir, $this->baseDir);
         $configDir = $this->createDirIfNotExists($this->configDir, $this->baseDir);
         // system config
-        $systemDir = createDirIfNotExists('system', $configDir);
+        $systemDir = $this->createDirIfNotExists('system', $configDir);
         $this->createFileIfNotExists('additional.php', $systemDir, '<?php');
         $this->createFileIfNotExists('settings.php', $systemDir, '<?php'. PHP_EOL.'return '.var_export($this->settings, true).';');
         // site config
-        $sitesDir = createDirIfNotExists('sites', $configDir);
-        $defaultSiteDir = createDirIfNotExists($this->siteName, $sitesDir);
-
-        $siteConfig = [
-            'rootPageId' => 1,
-            'base' => $request->getBaseUrl(),
-            'languages' => [
-                0 => [
-                    'title' => 'English',
-                    'enabled' => true,
-                    'languageId' => 0,
-                    'base' => '/',
-                    'typo3Language' => 'default',
-                    'locale' => 'en_US.UTF-8',
-                    'iso-639-1' => 'en',
-                    'navigationTitle' => 'English',
-                    'hreflang' => 'en-us',
-                    'direction' => 'ltr',
-                    'flag' => 'us'
-                ]
-            ]
-        ];
-        $this->createFileIfNotExists('config.yaml', $defaultSiteDir, Yaml::dump($siteConfig, 4, 2));
+        $sitesDir = $this->createDirIfNotExists('sites', $configDir);
+        $defaultSiteDir = $this->createDirIfNotExists($this->siteName, $sitesDir);
+        $this->createFileIfNotExists('config.yaml', $defaultSiteDir, Yaml::dump($site->getSiteConfig(), 4, 2));
 
         return $this;
     }

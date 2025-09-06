@@ -16,7 +16,7 @@ class Site implements Typo3FeatureInterface
     private function __construct(
         private array $languages = [],
         private int $pageId = 1,
-        private ?array $siteConfig = [],
+        private ?array $siteConfig = null,
         private bool $disableFallbackLanguage = false
     )
     {}
@@ -71,12 +71,13 @@ class Site implements Typo3FeatureInterface
         }
 
         // fallback default
-        if (empty($this->languages) && $this->disableFallbackLanguage) {
-            $this->addLanguage(SiteLanguage::EN);
+        if (empty($this->languages) && !$this->disableFallbackLanguage) {
+            $this->addLanguage(SiteLanguage::DE);
+            $this->setLanguage(SiteLanguage::EN, 0);
         }
 
         /** @var Request $request */
-        $request = $features[Request::class] ?? throw new Exception('required feature not given: ' . Request::class);
+        $request = $features[Request::class] ?? throw new Exception('Request Feature not provided');
 
         $siteConfig = [
             'rootPageId' => $this->pageId,
@@ -86,12 +87,15 @@ class Site implements Typo3FeatureInterface
         $languagesById = [];
         $requestIdSpotLanguage = [];
         foreach ($this->languages as $languageConfig) {
-            $languagesById[] = $language =  $languageConfig['l'];
+            $language =  $languageConfig['l'];
             $requestLangId = $languageConfig['id'] ?? null;
-            if ($requestLangId > 0) {
+            if ($requestLangId !== null) {
                 $requestIdSpotLanguage[$requestLangId] = $language;
+            } else {
+                $languagesById[] = $language;
             }
         }
+
         foreach ($requestIdSpotLanguage as $spot => $language) {
             array_splice( $languagesById, $spot, 0, [$language]);
         }

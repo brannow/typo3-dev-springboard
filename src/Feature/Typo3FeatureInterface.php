@@ -13,5 +13,8 @@ interface Typo3FeatureInterface
      */
     public function execute(Typo3Version $version, array $features): self;
 
+    /**
+     * @return Typo3FeatureInterface[]
+     */
     public function requiredFeatures(): array;
 }

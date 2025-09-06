@@ -5,6 +5,7 @@ namespace Typo3DevSpringboard\Feature;
 use PDO;
 use Symfony\Component\Filesystem\Path;
 use Typo3DevSpringboard\Typo3Version;
+use Exception;
 
 class Database implements Typo3FeatureInterface
 {
@@ -46,7 +47,7 @@ class Database implements Typo3FeatureInterface
     public function execute(Typo3Version $version, array $features): self
     {
         /** @var FileSystem $fileSystem */
-        $fileSystem = $features[FileSystem::class];
+        $fileSystem = $features[FileSystem::class] ?? throw new Exception('FileSystem Feature not provided');
 
         // Determine database path
         if ($this->path === null && $this->driver === 'sqlite') {

@@ -10,17 +10,7 @@ final class Builder
     /**
      * @var array<class-string<Typo3FeatureInterface>, Typo3FeatureInterface>
      */
-    private array $featureStack = [];
-
-    /**
-     * @var array<class-string<Typo3FeatureInterface>>
-     */
-    private array $processing = [];
-
-    /**
-     * @var array<class-string<Typo3FeatureInterface>, Typo3FeatureInterface>
-     */
-    private array $processed = [];
+    private array $singletons = [];
 
     /**
      * Core features required for any TYPO3 to boot - version specific
@@ -90,7 +80,11 @@ final class Builder
      */
     public function getFeature(string $featureClass): Typo3FeatureInterface
     {
-        return $this->featureStack[$featureClass] ??= new $featureClass();
+        if (!is_a($featureClass, Typo3FeatureInterface::class, true)) {
+            throw new Exception("Feature {$featureClass} must implement Typo3FeatureInterface");
+        }
+
+        return $this->singletons[$featureClass] ??= $featureClass::make();
     }
 
     /**
@@ -98,95 +92,97 @@ final class Builder
      */
     public function addFeature(Typo3FeatureInterface $feature): self
     {
-        $this->featureStack[$feature::class] = $feature;
+        $this->singletons[$feature::class] = $feature;
         return $this;
     }
 
     /**
      * Topological sort with circular dependency detection
      */
-    private function resolveFeatures(): array
+    private function buildExecutionOrder(): array
     {
-        $this->processed = [];
-        $this->processing = [];
-
-        // Ensure all mandatory features exist (use user-provided or create defaults)
-        foreach ($this->getMandatoryFeatures() as $mandatoryClass) {
-            if (!isset($this->featureStack[$mandatoryClass])) {
-                $this->featureStack[$mandatoryClass] = new $mandatoryClass();
-            }
+        $graph  = [];
+        $inDegree = [];
+        foreach ($this->singletons as $class => $instance) {
+            $graph[$class]  = $instance->requiredFeatures();
+            $inDegree[$class] = 0;
         }
 
-        foreach ($this->featureStack as $featureClass => $feature) {
-            if (!isset($this->processed[$featureClass])) {
-                $this->processFeature($featureClass, $feature);
-            }
-        }
-
-        return $this->processed;
-    }
-
-    private function processFeature(string $featureClass, Typo3FeatureInterface $feature): void
-    {
-        // Circular dependency detection
-        if (isset($this->processing[$featureClass])) {
-            throw new Exception(sprintf(
-                'Circular dependency detected: %s',
-                implode(' -> ', array_keys($this->processing)) . ' -> ' . $featureClass
-            ));
-        }
-
-        $this->processing[$featureClass] = true;
-
-        // Process dependencies first
-        foreach ($feature->requiredFeatures() as $requiredClass) {
-            if (!isset($this->processed[$requiredClass])) {
-                // Auto-create if it's mandatory, otherwise error
-                if (!isset($this->featureStack[$requiredClass])) {
-                    if (in_array($requiredClass, $this->getMandatoryFeatures())) {
-                        $this->featureStack[$requiredClass] = new $requiredClass();
-                    } else {
-                        throw new Exception(sprintf(
-                            'Feature %s requires %s, but it was not added',
-                            $featureClass,
-                            $requiredClass
-                        ));
-                    }
+        // fill in-degree
+        foreach ($graph as $class => $deps) {
+            foreach ($deps as $d) {
+                if (!isset($inDegree[$d])) {        // auto-add missing
+                    $feature      = $this->getFeature($d);   // creates + stores + returns
+                    $inDegree[$d] = 0;
+                    $graph[$d]    = $feature->requiredFeatures();
                 }
-                $this->processFeature($requiredClass, $this->featureStack[$requiredClass]);
+                $inDegree[$d]++;
             }
         }
 
-        // Mark as processed
-        unset($this->processing[$featureClass]);
-        $this->processed[$featureClass] = $feature;
+        $queue = [];
+        foreach ($inDegree as $class => $deg) {
+            if ($deg === 0) $queue[] = $class;
+        }
+
+        $order = [];
+        while ($queue) {
+            $curr = array_shift($queue);
+            $order[] = $curr;
+
+            foreach ($graph[$curr] as $dep) {
+                if (--$inDegree[$dep] === 0) {
+                    $queue[] = $dep;
+                }
+            }
+        }
+
+        if (count($order) !== count($inDegree)) {
+            throw new Exception('Circular dependency detected between features');
+        }
+
+        return array_reverse($order);
     }
 
+    /**
+     * @param bool $return
+     * @return string|null
+     */
     public function execute(bool $return = false): ?string
     {
-        // Resolve features - this ensures mandatory features exist
-        $orderedFeatures = $this->resolveFeatures();
-
-        // Execute features in correct order
-        foreach ($orderedFeatures as $feature) {
-            $feature->execute($this->version, $this->processed);
+        // Ensure all mandatory features are included as singletons
+        foreach ($this->getMandatoryFeatures() as $mandatoryClass) {
+            $this->getFeature($mandatoryClass);
         }
 
-        /** @var FileSystem $fileSystem */
-        $fileSystem = $this->processed[FileSystem::class];
-        $scriptPath = $fileSystem->getScriptPath();
+        // execute in topological order
+        /** @var array<class-string, Typo3FeatureInterface> $executed */
+        $executed = [];
+        $order = $this->buildExecutionOrder();
+        foreach ($order as $class) {
+            $feature           = $this->getFeature($class);
+            $requiredClasses   = $feature->requiredFeatures();   // list<class-string>
+            // pick only the dependencies that have already been executed
+            $requestedFeatures = array_intersect_key($executed, array_flip($requiredClasses));
 
-        if (!file_exists($scriptPath)) {
-            throw new Exception('TYPO3 entry point not found: ' . $scriptPath);
+            // execute and remember
+            $feature->execute($this->version, $requestedFeatures);
+            $executed[$class]  = $feature;
+        }
+
+        /** @var FileSystem $fs */
+        $fs = $this->getFeature(FileSystem::class);
+        $script = $fs->getScriptPath();
+        if (!file_exists($script)) {
+            throw new Exception("TYPO3 entry point not found: {$script}");
         }
 
         if ($return) {
             ob_start();
-            require $scriptPath;
+            require $script;
             return ob_get_clean();
         }
-
-        require $scriptPath;
+        require $script;
         return null;
     }
 }
