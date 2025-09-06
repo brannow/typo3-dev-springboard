@@ -20,11 +20,22 @@ class Database implements Typo3FeatureInterface
         return new self();
     }
 
-    public function memory(): self
+    public function getDbSettingsConfig(Typo3Version $version, string $baseDir = ''): array
     {
-        $this->driver = 'sqlite:memory';
-        $this->path = null;
-        return $this;
+        if ($this->path === null && $this->driver === 'sqlite') {
+            $this->path = Path::join($baseDir, 'var', 'database.sqlite');
+        }
+
+        return [
+            'DB' => [
+                'Connections' => [
+                    'Default' => [
+                        'driver' => 'pdo_'. $this->driver,
+                        'path' => $this->path
+                    ]
+                ]
+            ]
+        ];
     }
 
     public function addTable(string $name, string $schema): self
@@ -55,9 +66,7 @@ class Database implements Typo3FeatureInterface
         }
 
         // Create database connection
-        $dsn = $this->driver === 'sqlite:memory'
-            ? 'sqlite::memory:'
-            : 'sqlite:' . $this->path;
+        $dsn = 'sqlite:' . $this->path;
 
         // Always recreate for fresh state
         if ($this->path && file_exists($this->path)) {
@@ -83,24 +92,6 @@ class Database implements Typo3FeatureInterface
                 $this->insertRecord($table, $row);
             }
         }
-
-        // Update FileSystem settings with database config
-        $settings = [
-            'SYS' => [
-                'encryptionKey' => 'dev-key-' . bin2hex(random_bytes(16)),
-                'trustedHostsPattern' => '.*'
-            ],
-            'DB' => [
-                'Connections' => [
-                    'Default' => [
-                        'driver' => 'pdo_sqlite',
-                        'path' => $this->path ?? ':memory:'
-                    ]
-                ]
-            ]
-        ];
-
-        $fileSystem->setSettings($settings);
 
         return $this;
     }
@@ -190,10 +181,5 @@ class Database implements Typo3FeatureInterface
 
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($data);
-    }
-
-    public function getPdo(): ?PDO
-    {
-        return $this->pdo;
     }
 }

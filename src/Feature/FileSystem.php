@@ -13,7 +13,12 @@ class FileSystem implements Typo3FeatureInterface
     private string $configDir = 'config';
     private string $publicDir = 'public';
     private string $siteName = 'main';
-    private array $settings = [];
+    private array $settings = [
+        'SYS' => [
+            'encryptionKey' => 'not-secure-secret',
+            'trustedHostsPattern' => '.*'
+        ]
+    ];
 
     private function __construct(
         private string $baseDir = './'
@@ -67,9 +72,9 @@ class FileSystem implements Typo3FeatureInterface
         return $this;
     }
 
-    public function setSettings(array $settings): self
+    public function addSettings(array $settings): self
     {
-        $this->settings = $settings;
+        $this->settings = array_replace_recursive($this->settings, $settings);
         return $this;
     }
 

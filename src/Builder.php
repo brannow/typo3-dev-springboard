@@ -150,6 +150,14 @@ final class Builder
      */
     public function execute(bool $return = false): ?string
     {
+        // special case DB and filesystem
+        /** @var Database $database */
+        $database = $this->getFeature(Database::class);
+        /** @var FileSystem $fileSystem */
+        $fileSystem = $this->getFeature(FileSystem::class);
+        $dbSettings = $database->getDbSettingsConfig($this->version, $fileSystem->getBaseDir());
+        $fileSystem->addSettings($dbSettings);
+
         // Ensure all mandatory features are included as singletons
         foreach ($this->getMandatoryFeatures() as $mandatoryClass) {
             $this->getFeature($mandatoryClass);
@@ -179,10 +187,10 @@ final class Builder
 
         if ($return) {
             ob_start();
-            require $script;
+            require_once $script;
             return ob_get_clean();
         }
-        require $script;
+        require_once $script;
         return null;
     }
 }
