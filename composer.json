@@ -1,0 +1,36 @@
+{
+  "name": "brannow/typo3-dev-springboard",
+  "description": "Launch into TYPO3 development instantly - ephemeral TYPO3 instances for extension development",
+  "type": "library",
+  "license": "MIT",
+  "keywords": [
+    "TYPO3",
+    "development",
+    "testing",
+    "extension-development",
+    "dev-tools",
+    "ephemeral",
+    "springboard"
+  ],
+  "authors": [
+    {
+      "name": "Benjamin Rannow"
+    }
+  ],
+  "homepage": "https://github.com/brannow/typo3-dev-springboard",
+  "support": {
+    "issues": "https://github.com/brannow/typo3-dev-springboard/issues",
+    "source": "https://github.com/brannow/typo3-dev-springboard"
+  },
+  "require": {
+    "php": "^8.1",
+    "typo3/minimal": "^12.4 || ^13.4",
+    "symfony/filesystem": "*",
+    "symfony/yaml": "*"
+  },
+  "autoload": {
+    "psr-4": {
+      "Typo3DevSpringboard\\": "src/"
+    }
+  }
+}
