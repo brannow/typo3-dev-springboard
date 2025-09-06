@@ -77,11 +77,12 @@ final class Builder
 
     /**
      * @param class-string<Typo3FeatureInterface> $featureClass
+     * @throws Exception
      */
     public function getFeature(string $featureClass): Typo3FeatureInterface
     {
         if (!is_a($featureClass, Typo3FeatureInterface::class, true)) {
-            throw new Exception("Feature {$featureClass} must implement Typo3FeatureInterface");
+            throw new Exception("Feature ". $featureClass ." must implement Typo3FeatureInterface");
         }
 
         return $this->singletons[$featureClass] ??= $featureClass::make();
