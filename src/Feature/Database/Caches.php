@@ -2,43 +2,46 @@
 
 namespace Typo3DevSpringboard\Feature\Database;
 
-use Typo3DevSpringboard\Typo3Version;
-
 class Caches extends Table
 {
-    protected function getTableSchemas(Typo3Version $version): array
+    public static function getIdentifier(): string
+    {
+        return 'cache_tables';
+    }
+
+    protected function getTableSchemas(): array
     {
         return [
             'cache_hash' => [
-                'id' => 'INTEGER PRIMARY KEY',
+                'id' => 'INTEGER PRIMARY KEY AUTOINCREMENT',
                 'identifier' => 'TEXT NOT NULL',
                 'expires' => 'INTEGER DEFAULT 0',
                 'content' => 'TEXT'
             ],
             'cache_pages' => [
-                'id' => 'INTEGER PRIMARY KEY',
+                'id' => 'INTEGER PRIMARY KEY AUTOINCREMENT',
                 'identifier' => 'TEXT NOT NULL',
                 'expires' => 'INTEGER DEFAULT 0',
                 'content' => 'TEXT'
             ],
             'cache_rootline' => [
-                'id' => 'INTEGER PRIMARY KEY',
+                'id' => 'INTEGER PRIMARY KEY AUTOINCREMENT',
                 'identifier' => 'TEXT NOT NULL',
                 'expires' => 'INTEGER DEFAULT 0',
                 'content' => 'TEXT'
             ],
             'cache_hash_tags' => [
-                'id' => 'INTEGER PRIMARY KEY',
+                'id' => 'INTEGER PRIMARY KEY AUTOINCREMENT',
                 'identifier' => 'TEXT NOT NULL',
                 'tag' => 'TEXT NOT NULL',
             ],
             'cache_pages_tags' => [
-                'id' => 'INTEGER PRIMARY KEY',
+                'id' => 'INTEGER PRIMARY KEY AUTOINCREMENT',
                 'identifier' => 'TEXT NOT NULL',
                 'tag' => 'TEXT NOT NULL',
             ],
             'cache_rootline_tags' => [
-                'id' => 'INTEGER PRIMARY KEY',
+                'id' => 'INTEGER PRIMARY KEY AUTOINCREMENT',
                 'identifier' => 'TEXT NOT NULL',
                 'tag' => 'TEXT NOT NULL',
             ],

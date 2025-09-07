@@ -2,15 +2,18 @@
 
 namespace Typo3DevSpringboard\Feature\Database;
 
-use Typo3DevSpringboard\Typo3Version;
-
 class Pages extends Table
 {
-    protected function getTableSchemas(Typo3Version $version): array
+    public static function getIdentifier(): string
+    {
+        return 'pages';
+    }
+
+    protected function getTableSchemas(): array
     {
         return [
             'pages' => [
-                'uid' => 'INTEGER PRIMARY KEY',
+                'uid' => 'INTEGER PRIMARY KEY AUTOINCREMENT',
                 'pid' => 'INTEGER DEFAULT 0',
                 'title' => 'TEXT',
                 'doktype' => 'INTEGER DEFAULT 1',

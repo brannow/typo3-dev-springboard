@@ -8,12 +8,14 @@ use Typo3DevSpringboard\Typo3Version;
 class Site implements Typo3FeatureInterface
 {
     /**
+     * @param Typo3Version $version
      * @param array<string, array<int|null|SiteLanguage>> $languages
      * @param int $pageId
      * @param array|null $siteConfig
      * @param bool $disableFallbackLanguage
      */
     private function __construct(
+        private readonly Typo3Version $version,
         private array $languages = [],
         private int $pageId = 1,
         private ?array $siteConfig = null,
@@ -21,19 +23,29 @@ class Site implements Typo3FeatureInterface
     )
     {}
 
-    public static function make(): self
+    public static function make(Typo3Version $version): static
     {
-        return new self();
+        return new static($version);
     }
 
-    public function disableFallbackLanguage(bool $disable): self
+    public function requiredFeatureIdentifier(): array
+    {
+        return [Request::getIdentifier()];
+    }
+
+    public static function getIdentifier(): string
+    {
+        return 'Site';
+    }
+
+    public function disableFallbackLanguage(bool $disable): static
     {
         $this->disableFallbackLanguage = $disable;
 
         return $this;
     }
 
-    public function addLanguage(SiteLanguage ... $siteLanguage): self
+    public function addLanguage(SiteLanguage ... $siteLanguage): static
     {
         foreach ($siteLanguage as $language) {
             $this->setLanguage($language, null);
@@ -42,28 +54,32 @@ class Site implements Typo3FeatureInterface
         return $this;
     }
 
-    public function setPageId(int $pageId): self
+    public function setPageId(int $pageId): static
     {
         $this->pageId = $pageId;
 
         return $this;
     }
 
-    public function setSiteConfig(?array $siteConfig): self
+    public function setSiteConfig(?array $siteConfig): static
     {
         $this->siteConfig = $siteConfig;
 
         return $this;
     }
 
-    public function setLanguage(SiteLanguage $siteLanguage, ?int $languageId): self
+    public function setLanguage(SiteLanguage $siteLanguage, ?int $languageId): static
     {
         $this->languages[$siteLanguage->name] = ['l' => $siteLanguage, 'id' => $languageId];
         return $this;
     }
 
-
-    public function execute(Typo3Version $version, array $features): Typo3FeatureInterface
+    /**
+     * @param array $features
+     * @return static
+     * @throws Exception
+     */
+    public function execute(array $features): static
     {
         // custom set, finished
         if ($this->siteConfig !== null) {
@@ -77,7 +93,7 @@ class Site implements Typo3FeatureInterface
         }
 
         /** @var Request $request */
-        $request = $features[Request::class] ?? throw new Exception('Request Feature not provided');
+        $request = $features[Request::getIdentifier()] ?? throw new Exception('Request Feature not provided');
 
         $siteConfig = [
             'rootPageId' => $this->pageId,
@@ -115,10 +131,5 @@ class Site implements Typo3FeatureInterface
     public function getSiteConfig(): array
     {
         return $this->siteConfig;
-    }
-
-    public function requiredFeatures(): array
-    {
-        return [Request::class];
     }
 }

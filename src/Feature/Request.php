@@ -8,6 +8,7 @@ use Typo3DevSpringboard\Typo3Version;
 class Request implements Typo3FeatureInterface
 {
     public function __construct(
+        private readonly Typo3Version $version,
         private string $uri = '/',
         private string $domain = 'localhost',
         private bool $https = false,
@@ -15,47 +16,51 @@ class Request implements Typo3FeatureInterface
     )
     {}
 
-    public function requiredFeatures(): array
+    public function requiredFeatureIdentifier(): array
     {
         return [];
     }
 
-    public static function make(): self
+    public static function getIdentifier(): string
     {
-        return new self();
+        return 'Request';
     }
 
-    public function setUri(string $uri): self
+    public static function make(Typo3Version $version): static
+    {
+        return new static($version);
+    }
+
+    public function setUri(string $uri): static
     {
         $this->uri = $uri;
 
         return $this;
     }
 
-    public function setDomain(string $domain): self
+    public function setDomain(string $domain): static
     {
         $this->domain = $domain;
         return $this;
     }
 
-    public function setHttps(bool $https): self
+    public function setHttps(bool $https): static
     {
         $this->https = $https;
         return $this;
     }
 
-    public function setMethod(string $method): self
+    public function setMethod(string $method): static
     {
         $this->method = $method;
         return $this;
     }
 
     /**
-     * @param Typo3Version $version
      * @param array<class-string<Typo3FeatureInterface>, Typo3FeatureInterface> $features
-     * @return self
+     * @return static
      */
-    public function execute(Typo3Version $version, array $features): self
+    public function execute(array $features): static
     {
         $_SERVER['HTTP_HOST'] = $this->domain;
         $_SERVER['REQUEST_URI'] = $this->uri;

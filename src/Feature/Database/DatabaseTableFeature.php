@@ -7,5 +7,13 @@ use Typo3DevSpringboard\Typo3Version;
 
 interface DatabaseTableFeature
 {
-    public function execute(Typo3Version $version, Database $database): self;
+    public static function make(Typo3Version $version): static;
+
+    public function execute(Database $database): static;
+
+    public static function getIdentifier(): string;
+
+    public function addRow(array $data, string $table): static;
+
+    public function getSchemaForTable(string $dbTableName): array;
 }

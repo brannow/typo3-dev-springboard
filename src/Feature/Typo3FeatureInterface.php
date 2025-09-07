@@ -6,15 +6,18 @@ use Typo3DevSpringboard\Typo3Version;
 
 interface Typo3FeatureInterface
 {
-    /**
-     * @param Typo3Version $version
-     * @param array<class-string<Typo3FeatureInterface>, Typo3FeatureInterface> $features
-     * @return self
-     */
-    public function execute(Typo3Version $version, array $features): self;
+    public static function make(Typo3Version $version): static;
 
     /**
-     * @return class-string<Typo3FeatureInterface>[]
+     * @param array<class-string<Typo3FeatureInterface>, Typo3FeatureInterface> $features
+     * @return static
      */
-    public function requiredFeatures(): array;
+    public function execute(array $features): static;
+
+    /**
+     * @return string[]
+     */
+    public function requiredFeatureIdentifier(): array;
+
+    public static function getIdentifier(): string;
 }

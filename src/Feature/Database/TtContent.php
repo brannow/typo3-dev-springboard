@@ -2,16 +2,18 @@
 
 namespace Typo3DevSpringboard\Feature\Database;
 
-use Typo3DevSpringboard\Feature\Typo3FeatureInterface;
-use Typo3DevSpringboard\Typo3Version;
-
 class TtContent extends Table
 {
-    protected function getTableSchemas(Typo3Version $version): array
+    public static function getIdentifier(): string
+    {
+        return 'tt_content';
+    }
+
+    protected function getTableSchemas(): array
     {
         return [
             'tt_content' => [
-                'uid' => 'INTEGER PRIMARY KEY',
+                'uid' => 'INTEGER PRIMARY KEY AUTOINCREMENT',
                 'pid' => 'INTEGER DEFAULT 0',
                 'header' => 'TEXT DEFAULT ""',
                 'bodytext' => 'TEXT DEFAULT ""',

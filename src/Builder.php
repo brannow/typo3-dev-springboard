@@ -3,97 +3,216 @@
 namespace Typo3DevSpringboard;
 
 use Exception;
-use Typo3DevSpringboard\Feature\{FileSystem, Request, Site, Database, Typo3FeatureInterface};
+use Typo3DevSpringboard\Feature\{FileSystem, Request, Site, Database, SiteLanguage, Typo3FeatureInterface};
+use Throwable;
 
-final class Builder
+class Builder
 {
     /**
-     * @var array<class-string<Typo3FeatureInterface>, Typo3FeatureInterface>
+     * Identifier => Typo3FeatureInterface
+     * @var array<string, Typo3FeatureInterface>
      */
     private array $singletons = [];
-
     /**
-     * Core features required for any TYPO3 to boot - version specific
-     * @return array<class-string<Typo3FeatureInterface>>
+     * Identifier => Typo3FeatureInterface-Class-Name
+     * @var array<string, class-string<Typo3FeatureInterface>>
      */
-    private function getMandatoryFeatures(): array
+    private array $featureRegistryMap = [];
+
+    public static function make(Typo3Version $version): static
     {
-        // Base features for all versions
-        $features = [
-            Request::class,
-            FileSystem::class,
-            Site::class,
-            Database::class,
-        ];
-
-        // Add version-specific mandatory features
-        switch ($this->version) {
-            case Typo3Version::TYPO3_13_LTS:
-                // V13 might require additional core features
-                break;
-
-            case Typo3Version::TYPO3_12_LTS:
-                // V12 specific requirements
-                break;
-        }
-
-        return $features;
-    }
-
-    public static function make(Typo3Version $version): self
-    {
-        return new self($version);
+        return new static($version);
     }
 
     private function __construct(
         private readonly Typo3Version $version
     ) {
-        // Don't initialize anything here - let execute() handle it
-    }
-
-    public function installDir(string $baseDir): self
-    {
-        /** @var FileSystem $fileSystem */
-        $fileSystem = $this->getFeature(FileSystem::class);
-        $fileSystem->setBaseDir($baseDir);
-        return $this;
-    }
-
-    public function withUri(string $uri): self
-    {
-        /** @var Request $request */
-        $request = $this->getFeature(Request::class);
-        $request->setUri($uri);
-        return $this;
-    }
-
-    public function withDomain(string $domain, bool $https = false): self
-    {
-        /** @var Request $request */
-        $request = $this->getFeature(Request::class);
-        $request->setDomain($domain)->setHttps($https);
-        return $this;
+        // init default required default features
+        // we use the classes on purpose to also fill up the FeatureRegistryMap
+        $this->getFeature(FileSystem::class);
+        $this->getFeature(Database::class);
+        $this->getFeature(Request::class);
+        $this->getFeature(Site::class);
     }
 
     /**
-     * @param class-string<Typo3FeatureInterface> $featureClass
+     * currently a must-have, maybe there is an auto-detect way, dunno
+     * @param string $baseDir
+     * @return $this
      * @throws Exception
      */
-    public function getFeature(string $featureClass): Typo3FeatureInterface
+    public function installDir(string $baseDir): static
     {
-        if (!is_a($featureClass, Typo3FeatureInterface::class, true)) {
-            throw new Exception("Feature ". $featureClass ." must implement Typo3FeatureInterface");
-        }
-
-        return $this->singletons[$featureClass] ??= $featureClass::make();
+        /** @var FileSystem $fileSystem */
+        $feature = $this->getFeature(FileSystem::getIdentifier());
+        $feature->setBaseDir($baseDir);
+        return $this;
     }
 
     /**
-     * Add a configured feature - this overrides any default
+     * REQUEST FEATURES
      */
-    public function addFeature(Typo3FeatureInterface $feature): self
+
+    /**
+     * @param string $uri
+     * @param string|null $domain
+     * @param string|null $method
+     * @param bool $https
+     * @return $this
+     * @throws Exception
+     */
+    public function withRequest(string $uri, ?string $domain = null, ?string $method = null, bool $https = false): static
     {
-        $this->singletons[$feature::class] = $feature;
+        /** @var Request $feature */
+        $feature = $this->getFeature(Request::getIdentifier());
+        $feature->setUri($uri);
+        if ($domain)
+            $feature->setDomain($domain);
+        if ($method)
+            $feature->setMethod($method);
+        $feature->setHttps($https);
+        return $this;
+    }
+
+
+    /**
+     * SITE FEATURES
+     */
+
+    /**
+     * @param SiteLanguage ...$language
+     * @return $this
+     * @throws Exception
+     */
+    public function addSiteLanguage(SiteLanguage ...$language): static
+    {
+        /** @var Site $feature */
+        $feature = $this->getFeature(Site::getIdentifier());
+        $feature->addLanguage(...$language);
+        return $this;
+    }
+
+    /**
+     * @param SiteLanguage $language
+     * @param int|null $languageId
+     * @return $this
+     * @throws Exception
+     */
+    public function setSiteLanguage(SiteLanguage $language, ?int $languageId = null): static
+    {
+        /** @var Site $feature */
+        $feature = $this->getFeature(Site::getIdentifier());
+        $feature->setLanguage($language, $languageId);
+        return $this;
+    }
+
+    /**
+     * @param int $pageId
+     * @return $this
+     * @throws Exception
+     */
+    public function setSiteRootPageId(int $pageId): static
+    {
+        /** @var Site $feature */
+        $feature = $this->getFeature(Site::getIdentifier());
+        $feature->setPageId($pageId);
+        return $this;
+    }
+
+    /**
+     * this enables / disables the Site Autogeneration, and use a given FULL site config (on null enable site Config generation)
+     *
+     * @param array|null $siteConfig
+     * @return $this
+     * @throws Exception
+     */
+    public function setSiteConfig(?array $siteConfig): static
+    {
+        /** @var Site $feature */
+        $feature = $this->getFeature(Site::getIdentifier());
+        $feature->setSiteConfig($siteConfig);
+
+        return $this;
+    }
+
+    /**
+     * DATABASE FEATURES
+     */
+
+    public function addDatabasePageRecord(array $row): static
+    {
+        /** @var Database $feature */
+        $feature = $this->getFeature(Database::getIdentifier());
+        $row = $feature->addRowToTable(Database\Pages::getIdentifier(),'pages', $row);
+        return $this;
+    }
+
+    public function addDatabaseContentRecord(array $row): static
+    {
+        $feature = $this->getFeature(Database::getIdentifier());
+        $row = $feature->addRowToTable(Database\TtContent::getIdentifier(),'tt_content', $row);
+
+        return $this;
+    }
+
+    /**
+     * INTERNAL ++++++++++++++++++++
+     */
+
+    /**
+     * get/ create new features and add them to the stack
+     * @param class-string<Typo3FeatureInterface>|string $featureClassOrIdentifier
+     * @throws Exception
+     */
+    public function getFeature(string $featureClassOrIdentifier): Typo3FeatureInterface
+    {
+        if (is_a($featureClassOrIdentifier, Typo3FeatureInterface::class, true)) {
+            $identifier = $featureClassOrIdentifier::getIdentifier();
+            $this->featureRegistryMap[$identifier] ??= $featureClassOrIdentifier;
+
+            return $this->singletons[$identifier] ??= $featureClassOrIdentifier::make($this->version);
+
+        } elseif(isset($this->featureRegistryMap[$featureClassOrIdentifier])) {
+
+            $featureClass = $this->featureRegistryMap[$featureClassOrIdentifier];
+            if (is_a($featureClass, Typo3FeatureInterface::class, true)) {
+
+                return $this->singletons[$featureClass::getIdentifier()] ??= $featureClass::make($this->version);
+            }
+        }
+
+        throw new Exception('Feature '. $featureClassOrIdentifier
+            . ' not found. Feature must implement '. Typo3FeatureInterface::class .'. '
+            . 'the Identifier of the Custom Feature was never Registered via addFeature. also Possible, getFeature once via Class-String instead of Identifier.' );
+    }
+
+    /**
+     *  overwrite features, use with caution! data-loss can happen, there is no merge, all feature are singleton!
+     */
+    public function addFeature(Typo3FeatureInterface $feature): static
+    {
+        $this->singletons[$feature::getIdentifier()] = $feature;
+        $this->featureRegistryMap[$feature::getIdentifier()] = $feature::class;
+        return $this;
+    }
+
+    /**
+     * removes / drops a feature completely.
+     * @param string|Typo3FeatureInterface|class-string<Typo3FeatureInterface> $identifierOrObjectOrClassName
+     * @return self
+     */
+    public function removeFeature(string|Typo3FeatureInterface $identifierOrObjectOrClassName): static
+    {
+        if ($identifierOrObjectOrClassName instanceof Typo3FeatureInterface || (is_a($identifierOrObjectOrClassName, Typo3FeatureInterface::class, true))) {
+            $identifier = $identifierOrObjectOrClassName::getIdentifier();
+        } else {
+            $identifier = $identifierOrObjectOrClassName;
+        }
+
+        if (isset($this->singletons[$identifier])) {
+            unset($this->singletons[$identifier]);
+        }
+
         return $this;
     }
 
@@ -104,18 +223,18 @@ final class Builder
     {
         $graph  = [];
         $inDegree = [];
-        foreach ($this->singletons as $class => $instance) {
-            $graph[$class]  = $instance->requiredFeatures();
-            $inDegree[$class] = 0;
+        foreach ($this->singletons as $identifier => $instance) {
+            $graph[$identifier] = $instance->requiredFeatureIdentifier();
+            $inDegree[$identifier] = 0;
         }
 
         // fill in-degree
-        foreach ($graph as $class => $deps) {
+        foreach ($graph as $deps) {
             foreach ($deps as $d) {
                 if (!isset($inDegree[$d])) {        // auto-add missing
                     $feature      = $this->getFeature($d);   // creates + stores + returns
                     $inDegree[$d] = 0;
-                    $graph[$d]    = $feature->requiredFeatures();
+                    $graph[$d]    = $feature->requiredFeatureIdentifier();
                 }
                 $inDegree[$d]++;
             }
@@ -146,44 +265,59 @@ final class Builder
     }
 
     /**
-     * @param bool $return
-     * @return string|null
+     * @return $this
+     * @throws Exception
      */
-    public function execute(bool $return = false): ?string
+    public function build(): static
     {
-        // special case DB and filesystem
-        /** @var Database $database */
-        $database = $this->getFeature(Database::class);
-        /** @var FileSystem $fileSystem */
-        $fileSystem = $this->getFeature(FileSystem::class);
-        $dbSettings = $database->getDbSettingsConfig($this->version, $fileSystem->getBaseDir());
-        $fileSystem->addSettings($dbSettings);
+        $database = null;
+        $fileSystem = null;
+        try {
+            // special case DB and filesystem
+            /** @var Database $database */
+            $database = $this->getFeature(Database::getIdentifier());
+            /** @var FileSystem $fileSystem */
+            $fileSystem = $this->getFeature(FileSystem::getIdentifier());
+        } catch (Throwable) {}
 
-        // Ensure all mandatory features are included as singletons
-        foreach ($this->getMandatoryFeatures() as $mandatoryClass) {
-            $this->getFeature($mandatoryClass);
+        if($database && $fileSystem) {
+            $dbSettings = $database->getDbSettingsConfig($fileSystem->getBaseDir());
+            $fileSystem->addSettings($dbSettings);
         }
 
         // execute in topological order
         /** @var array<class-string, Typo3FeatureInterface> $executed */
         $executed = [];
-        $order = $this->buildExecutionOrder();
-        foreach ($order as $class) {
-            $feature           = $this->getFeature($class);
-            $requiredClasses   = $feature->requiredFeatures();   // list<class-string>
+        foreach ($this->buildExecutionOrder() as $identifier) {
+            $feature = $this->getFeature($identifier);
+            $requiredIdentifier = $feature->requiredFeatureIdentifier();
             // pick only the dependencies that have already been executed
-            $requestedFeatures = array_intersect_key($executed, array_flip($requiredClasses));
+            $requestedFeatures = array_intersect_key($executed, array_flip($requiredIdentifier));
+
+            if (count($requestedFeatures) !== count($requiredIdentifier)) {
+                throw new Exception('Feature \''. $feature::class .'\' required: ' . implode(', ', $requiredIdentifier) . 'but only these Features found: ' . implode(', ', array_keys($requestedFeatures)));
+            }
 
             // execute and remember
-            $feature->execute($this->version, $requestedFeatures);
-            $executed[$class]  = $feature;
+            $feature->execute($requestedFeatures);
+            $executed[$identifier]  = $feature;
         }
 
+        return $this;
+    }
+
+    /**
+     * @param bool $return
+     * @return string|null
+     * @throws Exception
+     */
+    public function execute(bool $return = false): ?string
+    {
         /** @var FileSystem $fs */
-        $fs = $this->getFeature(FileSystem::class);
+        $fs = $this->getFeature(FileSystem::getIdentifier());
         $script = $fs->getScriptPath();
         if (!file_exists($script)) {
-            throw new Exception("TYPO3 entry point not found: {$script}");
+            throw new Exception('TYPO3 entry point not found: '. $script);
         }
 
         if ($return) {
