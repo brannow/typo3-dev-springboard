@@ -65,6 +65,7 @@ abstract class Table implements DatabaseTableFeature
 
     protected function insertRow(PDO $dbConnection, string $tableName, array $row): void
     {
+        $row = $this->setupDefaultData($row, $tableName);
         $row = $this->escapeData($dbConnection, $row);
         $dbConnection->exec('INSERT INTO ' . $tableName . '('. implode(', ', array_keys($row)) .') VALUES ('. implode(', ', $row) .')');
     }
@@ -83,6 +84,11 @@ abstract class Table implements DatabaseTableFeature
                 $data[$field] = $dbConnection->quote((string)$item, $type);
         }
 
+        return $data;
+    }
+
+    protected function setupDefaultData(array $data, string $table): array
+    {
         return $data;
     }
 

@@ -9,6 +9,13 @@ class Pages extends Table
         return 'pages';
     }
 
+    protected function setupDefaultData(array $data, string $table): array
+    {
+        $data['tstamp'] ??= time();
+        $data['crdate'] ??= time();
+        return $data;
+    }
+
     protected function getTableSchemas(): array
     {
         return [

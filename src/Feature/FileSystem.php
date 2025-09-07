@@ -13,6 +13,7 @@ class FileSystem implements Typo3FeatureInterface
     private string $configDir = 'config';
     private string $publicDir = 'public';
     private string $siteName = 'main';
+    private string $additionalCode = '';
     private array $settings = [
         'SYS' => [
             'encryptionKey' => 'not-secure-secret',
@@ -70,6 +71,15 @@ class FileSystem implements Typo3FeatureInterface
         return $this;
     }
 
+    /**
+     * @param string $additionalCode
+     * @return void
+     */
+    public function setAdditionalCode(string $additionalCode): void
+    {
+        $this->additionalCode = $additionalCode;
+    }
+
     public function setPublicDir(string $publicDir): static
     {
         $this->publicDir = $publicDir;
@@ -109,7 +119,7 @@ class FileSystem implements Typo3FeatureInterface
         $configDir = $this->createDirIfNotExists($this->configDir, $baseDir);
         // system config
         $systemDir = $this->createDirIfNotExists('system', $configDir);
-        $this->createFileIfNotExists('additional.php', $systemDir, '<?php');
+        $this->createFileIfNotExists('additional.php', $systemDir, '<?php' . PHP_EOL . $this->additionalCode);
         $this->createFileIfNotExists('settings.php', $systemDir, '<?php'. PHP_EOL.'return '.var_export($this->settings, true).';');
         // site config
         $sitesDir = $this->createDirIfNotExists('sites', $configDir);
@@ -122,7 +132,7 @@ class FileSystem implements Typo3FeatureInterface
     private function createDirIfNotExists(string $dir, string $basePath = ''): string
     {
         $trueDir = Path::join($basePath, $dir);
-        if (!file_exists($trueDir)) mkdir($trueDir, 0755);
+        if (!file_exists($trueDir)) mkdir($trueDir, 0755, true);
 
         return $trueDir;
     }

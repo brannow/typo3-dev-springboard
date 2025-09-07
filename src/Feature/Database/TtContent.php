@@ -9,6 +9,13 @@ class TtContent extends Table
         return 'tt_content';
     }
 
+    protected function setupDefaultData(array $data, string $table): array
+    {
+        $data['tstamp'] ??= time();
+        $data['crdate'] ??= time();
+        return $data;
+    }
+
     protected function getTableSchemas(): array
     {
         return [

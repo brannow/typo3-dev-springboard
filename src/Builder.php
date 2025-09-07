@@ -143,14 +143,26 @@ class Builder
     {
         /** @var Database $feature */
         $feature = $this->getFeature(Database::getIdentifier());
-        $row = $feature->addRowToTable(Database\Pages::getIdentifier(),'pages', $row);
+        $feature->addRowToTable(Database\Pages::getIdentifier(),'pages', $row);
         return $this;
     }
 
     public function addDatabaseContentRecord(array $row): static
     {
+        /** @var Database $feature */
         $feature = $this->getFeature(Database::getIdentifier());
-        $row = $feature->addRowToTable(Database\TtContent::getIdentifier(),'tt_content', $row);
+        $feature->addRowToTable(Database\TtContent::getIdentifier(),'tt_content', $row);
+
+        return $this;
+    }
+
+    public function addDatabaseTypoScriptTemplate(string $typoScript, int $pageId, ?int $root = null, ?string $templateName = null): static
+    {
+        /** @var Database $feature */
+        $feature = $this->getFeature(Database::getIdentifier());
+        /** @var Database\Template $templateTable */
+        $templateTable = $feature->getTable(Database\Template::getIdentifier());
+        $templateTable->addTypoScriptTemplate($typoScript, $pageId, $root, $templateName);
 
         return $this;
     }

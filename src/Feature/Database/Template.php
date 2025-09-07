@@ -9,6 +9,25 @@ class Template extends Table
         return 'sys_template';
     }
 
+    protected function setupDefaultData(array $data, string $table): array
+    {
+        $data['tstamp'] ??= time();
+        $data['crdate'] ??= time();
+        return $data;
+    }
+
+    public function addTypoScriptTemplate(string $template, int $pageId, ?int $root = null, ?string $templateName = null): static
+    {
+        $this->addRow([
+            'pid' => $pageId,
+            'root' => $root ?? $pageId,
+            'config' => addslashes($template),
+            'title' => $templateName ?? ('template_'.md5((string)microtime()))
+        ], 'sys_template');
+
+        return $this;
+    }
+
     protected function getTableSchemas(): array
     {
         return [
