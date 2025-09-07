@@ -66,7 +66,26 @@ page.10.value = Hello World
 ### Configuration
 
 ```php
-->installDir(__DIR__ . '/.Build')  // Required: TYPO3 installation path
+/* composer.json
+ the vendor and public dir must be in based in that root directory (in our case ./.Build)
+ 
+"config": {
+        "vendor-dir": ".Build/vendor", // important - same baseDir
+        "bin-dir": ".Build/bin",
+        "sort-packages": true,
+        "allow-plugins": {
+            "typo3/class-alias-loader": true,
+            "typo3/cms-composer-installers": true
+        }
+    },
+    "extra": {
+        "typo3/cms": {
+            "cms-package-dir": "{$vendor-dir}/typo3/cms",
+            "web-dir": ".Build/public"   // important - same baseDir
+        }
+    }
+ */
+->installDir(__DIR__ . '/.Build')  // Required: TYPO3 installation path look in the composer.json example above
 ->persistCache()                    // Keep cache between executions
 ```
 
@@ -383,6 +402,10 @@ $builder->setSiteConfig([
     'languages' => [/* custom */]
 ]);
 ```
+
+## Additional Information
+
+[FeatureSystem.md](FeatureSystem.md) a Deepdive into the Feature System and how it works
 
 ## License
 
