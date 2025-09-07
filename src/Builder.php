@@ -43,9 +43,18 @@ class Builder
      */
     public function installDir(string $baseDir): static
     {
-        /** @var FileSystem $fileSystem */
+        /** @var FileSystem $feature */
         $feature = $this->getFeature(FileSystem::getIdentifier());
         $feature->setBaseDir($baseDir);
+        return $this;
+    }
+
+    public function persistCache(): static
+    {
+        /** @var FileSystem $feature */
+        $feature = $this->getFeature(FileSystem::getIdentifier());
+        $feature->setPersistCache(true);
+
         return $this;
     }
 

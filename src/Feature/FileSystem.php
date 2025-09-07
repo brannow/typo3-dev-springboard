@@ -9,6 +9,7 @@ use Typo3DevSpringboard\Typo3Version;
 
 class FileSystem implements Typo3FeatureInterface
 {
+    private bool $persistCache = false;
     private string $varDir = 'var';
     private string $configDir = 'config';
     private string $publicDir = 'public';
@@ -52,6 +53,13 @@ class FileSystem implements Typo3FeatureInterface
     public function getBaseDir(): string
     {
         return $this->baseDir;
+    }
+
+    public function setPersistCache(bool $persistCache): static
+    {
+        $this->persistCache = $persistCache;
+
+        return $this;
     }
 
     public static function make(Typo3Version $version): static
@@ -112,9 +120,18 @@ class FileSystem implements Typo3FeatureInterface
         if (!file_exists($baseDir)) {
             throw new Exception('Base Typo3 Directory not found: ' . $baseDir);
         }
+
         // base structure
         putenv('TYPO3_PATH_APP='. $baseDir);
-        $this->createDirIfNotExists($this->varDir, $baseDir);
+        $varDir = $this->createDirIfNotExists($this->varDir, $baseDir);
+
+        // wipe cache dir
+        if (!$this->persistCache) {
+            $this->wipeDirectoryContent('cache', $varDir);
+            $this->wipeDirectoryContent('log', $varDir);
+            $this->wipeDirectoryContent('lock', $varDir);
+        }
+
         $this->createDirIfNotExists($this->publicDir, $baseDir);
         $configDir = $this->createDirIfNotExists($this->configDir, $baseDir);
         // system config
@@ -127,6 +144,15 @@ class FileSystem implements Typo3FeatureInterface
         $this->createFileIfNotExists('config.yaml', $defaultSiteDir, Yaml::dump($site->getSiteConfig(), 4, 2));
 
         return $this;
+    }
+
+    protected function wipeDirectoryContent(string $dir, string $baseDir = ''): void
+    {
+        $cacheDir = Path::join($baseDir, $dir);
+        $fileSystem = new  \Symfony\Component\Filesystem\Filesystem();
+        if ($fileSystem->exists($cacheDir)) {
+            $fileSystem->remove($cacheDir);
+        }
     }
 
     private function createDirIfNotExists(string $dir, string $basePath = ''): string
